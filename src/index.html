@@ -1,0 +1,619 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>人生 RPG</title>
+    <style>
+        :root { --primary: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --gray: #8E8E93; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: var(--text); }
+
+        /* --- 通用组件 --- */
+        .btn { border: none; border-radius: 8px; padding: 10px 16px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        .btn:active { opacity: 0.7; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
+        .btn-icon { background: #E5E5EA; color: var(--text); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-right: 8px; }
+        input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #C7C7CC; background: white; font-size: 16px; margin-bottom: 10px; }
+        label { font-size: 14px; color: var(--gray); margin-bottom: 5px; display: block; }
+
+        /* --- 布局 --- */
+        header { background: var(--card); padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; }
+        .app-title { font-size: 20px; font-weight: 700; display: flex; align-items: center; }
+        .app-title img { width: 32px; height: 32px; border-radius: 8px; margin-right: 10px; object-fit: cover; }
+        main { padding: 20px; max-width: 600px; margin: 0 auto; }
+        .skill-card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
+        .skill-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .skill-info { display: flex; align-items: center; flex: 1; }
+        .skill-icon { width: 50px; height: 50px; border-radius: 12px; margin-right: 15px; object-fit: cover; background: #f0f0f0; }
+        .skill-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .skill-lvl { font-size: 13px; color: var(--gray); background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+        .edit-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--gray); padding: 5px; }
+
+        /* --- 进度条样式 --- */
+        .progress-container { height: 12px; background: #E5E5EA; border-radius: 6px; overflow: hidden; margin-bottom: 10px; position: relative; }
+        .progress-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+        /* 饼状图逻辑 */
+        .progress-pie { width: 60px; height: 60px; border-radius: 50%; background: conic-gradient(var(--primary) 0%, #E5E5EA 0%); margin: 0 auto 10px; position: relative; }
+        .pie-inner { position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; background: var(--card); border-radius: 50%; }
+        .pie-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: bold; color: var(--text); }
+
+        /* --- 底部导航 --- */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: var(--card); display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -1px 5px rgba(0,0,0,0.05); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--gray); font-size: 10px; cursor: pointer; width: 33%; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 24px; margin-bottom: 4px; }
+
+        /* --- 模态框 --- */
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; z-index: 100; visibility: hidden; opacity: 0; transition: 0.3s; }
+        .modal.open { visibility: visible; opacity: 1; }
+        .modal-content { background: var(--card); width: 100%; max-height: 90vh; border-radius: 20px 20px 0 0; padding: 20px; overflow-y: auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* --- 图标选择器 --- */
+        .icon-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto; padding-right: 5px; }
+        .icon-option { width: 50px; height: 50px; border-radius: 12px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border: 2px solid transparent; object-fit: cover; }
+        .icon-option.selected { border-color: var(--primary); background: #E0F0FF; }
+        .icon-upload { border: 2px dashed var(--gray); background: transparent; color: var(--gray); font-size: 20px; }
+
+        /* --- 日历样式 --- */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .cal-day-name { font-size: 12px; color: var(--gray); padding: 10px 0; }
+        .cal-day { height: 50px; padding: 5px; border-radius: 8px; position: relative; cursor: pointer; font-size: 14px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; }
+        .cal-day.today { background: var(--primary); color: white; }
+        .cal-day.has-log::after { content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; margin-top: 4px; }
+        .cal-day.today.has-log::after { background: white; }
+        .log-list { margin-top: 20px; border-top: 1px solid #f0f0f0; padding-top: 10px; }
+        .log-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部导航 -->
+    <header>
+        <div class="app-title">
+            <img id="global-app-icon" src="" alt="Icon">
+            <span id="global-app-name">人生 RPG</span>
+        </div>
+        <button class="btn-icon" onclick="openGlobalSettings()">⚙️</button>
+    </header>
+
+    <!-- 主内容区：技能列表 -->
+    <main id="skill-list-view">
+        <!-- 技能卡片将通过 JS 渲染在这里 -->
+    </main>
+
+    <!-- 主内容区：日历视图 (默认隐藏) -->
+    <main id="calendar-view" style="display: none;">
+        <div class="calendar-header">
+            <button class="btn-icon" onclick="changeMonth(-1)">❮</button>
+            <span id="calendar-month-year" style="font-weight: bold; font-size: 18px;"></span>
+            <button class="btn-icon" onclick="changeMonth(1)">❯</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid">
+            <!-- 日历格子 JS 渲染 -->
+        </div>
+        <div class="log-list" id="daily-logs">
+            <!-- 当天日志 -->
+        </div>
+    </main>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('skills')">
+            <span class="nav-icon">🔥</span>
+            <span>技能</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('calendar')">
+            <span class="nav-icon">📅</span>
+            <span>日历</span>
+        </div>
+        <div class="nav-item" onclick="addNewSkill()">
+            <span class="nav-icon" style="color:var(--primary)">➕</span>
+            <span>添加</span>
+        </div>
+    </div>
+
+    <!-- 模态框：全局设置 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2>全局设置</h2>
+            <label>软件名称</label>
+            <input type="text" id="setting-app-name">
+
+            <label>软件图标 (点击 + 号上传)</label>
+            <div class="icon-selector" id="global-icon-selector">
+                <!-- JS 渲染图标选项 -->
+            </div>
+
+            <label>进度条样式</label>
+            <select id="setting-progress-style">
+                <option value="bar">条状进度条</option>
+                <option value="pie">饼状进度图</option>
+            </select>
+
+            <button class="btn btn-primary" onclick="saveGlobalSettings()">保存设置</button>
+            <button class="btn" style="width:100%; margin-top:10px; color: #FF3B30;" onclick="closeModal('settings-modal')">关闭</button>
+        </div>
+    </div>
+
+    <!-- 模态框：技能编辑 -->
+    <div id="skill-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="skill-modal-title">添加技能</h2>
+            <input type="hidden" id="edit-skill-id">
+
+            <label>技能名称</label>
+            <input type="text" id="skill-name">
+
+            <label>图标 (点击 + 号上传)</label>
+            <div class="icon-selector" id="skill-icon-selector">
+                <!-- JS 渲染 -->
+            </div>
+
+            <label>等级配置 (当前等级升级所需经验)</label>
+            <div id="levels-container">
+                <!-- 等级输入框 JS 渲染 -->
+            </div>
+            <button class="btn" style="background:#E5E5EA; width:100%" onclick="addLevelInput()">+ 添加下一级</button>
+
+            <div style="height: 20px;"></div>
+            <button class="btn btn-primary" onclick="saveSkill()">保存技能</button>
+            <button class="btn" style="width:100%; margin-top:10px; color: #FF3B30;" onclick="deleteCurrentSkill()">删除技能</button>
+            <button class="btn" style="width:100%; margin-top:10px;" onclick="closeModal('skill-modal')">取消</button>
+        </div>
+    </div>
+
+    <!-- 隐藏的文件输入框 -->
+    <input type="file" id="file-input-global" accept="image/*" style="display: none;" onchange="handleImageUpload(this, 'global')">
+    <input type="file" id="file-input-skill" accept="image/*" style="display: none;" onchange="handleImageUpload(this, 'skill')">
+
+<script>
+    // --- 数据存储与初始化 ---
+    const DB_KEY = 'rpg_app_data_v3';
+    let appData = {
+        settings: {
+            appName: '人生 RPG',
+            appIcon: '', // 空字符串代表默认图标或用户上传
+            progressStyle: 'bar' // 'bar' or 'pie'
+        },
+        skills: [], // { id, name, icon, currentExp, levels: [100, 200...], logs: { '2026-04-25': 50 } }
+    };
+
+    // 内置图标库 (Emoji)
+    const builtInIcons = ['🔥', '⚡', '📚', '💪', '🎨', '⚽', '🎵', '🚀', '💎', '👑'];
+
+    // 初始化
+    window.onload = function() {
+        loadData();
+        renderSkillList();
+        renderCalendar();
+        updateGlobalHeader();
+    };
+
+    function loadData() {
+        const saved = localStorage.getItem(DB_KEY);
+        if (saved) {
+            appData = JSON.parse(saved);
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem(DB_KEY, JSON.stringify(appData));
+        renderSkillList(); // 数据变动时重新渲染列表
+        renderCalendar(); // 更新日历上的点
+    }
+
+    // --- 全局设置逻辑 ---
+    function openGlobalSettings() {
+        document.getElementById('setting-app-name').value = appData.settings.appName;
+        document.getElementById('setting-progress-style').value = appData.settings.progressStyle;
+        renderIconSelector('global', appData.settings.appIcon);
+        openModal('settings-modal');
+    }
+
+    function saveGlobalSettings() {
+        appData.settings.appName = document.getElementById('setting-app-name').value;
+        appData.settings.progressStyle = document.getElementById('setting-progress-style').value;
+        // appIcon 在上传或选择时已经更新，这里主要保存名字和样式
+        saveData();
+        updateGlobalHeader();
+        closeModal('settings-modal');
+    }
+
+    function updateGlobalHeader() {
+        const iconEl = document.getElementById('global-app-icon');
+        const nameEl = document.getElementById('global-app-name');
+        nameEl.innerText = appData.settings.appName;
+
+        if (appData.settings.appIcon && appData.settings.appIcon.startsWith('data:')) {
+            iconEl.src = appData.settings.appIcon;
+        } else {
+            // 如果是空或者内置emoji，用默认处理
+            iconEl.src = appData.settings.appIcon ? '' : 'https://via.placeholder.com/32/007AFF/FFFFFF?text=R';
+            // 简单处理内置emoji显示，实际项目中建议用字体图标或图片
+            if(appData.settings.appIcon && !appData.settings.appIcon.startsWith('data:')) {
+                 iconEl.style.fontSize = "20px";
+                 iconEl.style.textAlign = "center";
+                 iconEl.style.lineHeight = "32px";
+            }
+        }
+    }
+
+    // --- 图标选择与上传通用逻辑 ---
+    let currentUploadTarget = ''; // 'global' or 'skill'
+
+    function renderIconSelector(type, selectedValue) {
+        currentUploadTarget = type;
+        const container = document.getElementById(type === 'global' ? 'global-icon-selector' : 'skill-icon-selector');
+        container.innerHTML = '';
+
+        // 1. 上传按钮
+        const uploadBtn = document.createElement('div');
+        uploadBtn.className = 'icon-option icon-upload';
+        uploadBtn.innerHTML = '➕';
+        uploadBtn.onclick = () => document.getElementById(type === 'global' ? 'file-input-global' : 'file-input-skill').click();
+        container.appendChild(uploadBtn);
+
+        // 2. 内置图标
+        builtInIcons.forEach(icon => {
+            const btn = document.createElement('div');
+            btn.className = `icon-option ${selectedValue === icon ? 'selected' : ''}`;
+            btn.innerText = icon;
+            btn.onclick = () => selectIcon(icon, type);
+            container.appendChild(btn);
+        });
+    }
+
+    function selectIcon(icon, type) {
+        if (type === 'global') {
+            appData.settings.appIcon = icon;
+            saveData();
+            updateGlobalHeader();
+            // 重新渲染以更新选中状态
+            renderIconSelector('global', icon);
+        } else {
+            // 技能编辑时的临时状态，保存在 modal 的 dataset 或隐藏域中更佳，这里简单处理
+            const modal = document.getElementById('skill-modal');
+            modal.dataset.tempIcon = icon;
+            renderIconSelector('skill', icon);
+        }
+    }
+
+    function handleImageUpload(input, type) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                if (type === 'global') {
+                    appData.settings.appIcon = base64;
+                    saveData();
+                    updateGlobalHeader();
+                    renderIconSelector('global', base64);
+                } else {
+                    const modal = document.getElementById('skill-modal');
+                    modal.dataset.tempIcon = base64;
+                    renderIconSelector('skill', base64);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        // 重置 input 防止同一文件不触发 onchange
+        input.value = '';
+    }
+
+    // --- 技能管理逻辑 ---
+    function renderSkillList() {
+        const container = document.getElementById('skill-list-view');
+        container.innerHTML = '';
+
+        if (appData.skills.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color: #8E8E93; margin-top: 50px;">暂无技能，点击下方 + 添加</div>';
+            return;
+        }
+
+        appData.skills.forEach(skill => {
+            const card = document.createElement('div');
+            card.className = 'skill-card';
+
+            // 计算等级和进度
+            const { level, currentLevelExp, nextLevelExp, progressPercent } = getSkillStats(skill);
+
+            // 样式判断
+            const isPie = appData.settings.progressStyle === 'pie';
+
+            let progressHTML = '';
+            if (isPie) {
+                const deg = (progressPercent / 100) * 360;
+                progressHTML = `
+                    <div class="progress-pie" style="background: conic-gradient(var(--primary) ${deg}deg, #E5E5EA ${deg}deg);">
+                        <div class="pie-inner"></div>
+                        <div class="pie-text">${Math.round(progressPercent)}%</div>
+                    </div>
+                `;
+            } else {
+                progressHTML = `
+                    <div class="progress-container">
+                        <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                    <div style="font-size: 12px; color: var(--gray); text-align: right;">
+                        ${currentLevelExp} / ${nextLevelExp || '∞'} 经验
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="skill-header">
+                    <div class="skill-info">
+                        <img src="${skill.icon && skill.icon.startsWith('data:') ? skill.icon : 'https://via.placeholder.com/50/007AFF/FFFFFF?text=' + (skill.icon || '?')}" class="skill-icon">
+                        <div>
+                            <div class="skill-name">${skill.name}</div>
+                            <span class="skill-lvl">Lv. ${level}</span>
+                        </div>
+                    </div>
+                    <button class="edit-btn" onclick="editSkill('${skill.id}')">✎</button>
+                </div>
+
+                ${progressHTML}
+
+                <button class="btn btn-primary" onclick="addExp('${skill.id}')">+ 经验值</button>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function getSkillStats(skill) {
+        let currentLevelExp = skill.currentExp;
+        let level = 1;
+        let nextLevelExp = skill.levels[0] || 0;
+
+        // 计算当前等级
+        for (let i = 0; i < skill.levels.length; i++) {
+            if (currentLevelExp >= skill.levels[i]) {
+                currentLevelExp -= skill.levels[i];
+                level++;
+            } else {
+                nextLevelExp = skill.levels[i];
+                break;
+            }
+        }
+
+        // 如果满级
+        if (level > skill.levels.length) {
+            nextLevelExp = currentLevelExp; // 或者设为 0
+        }
+
+        const progressPercent = nextLevelExp === 0 ? 100 : (currentLevelExp / nextLevelExp) * 100;
+
+        return { level, currentLevelExp, nextLevelExp, progressPercent };
+    }
+
+    function addNewSkill() {
+        document.getElementById('skill-modal-title').innerText = '添加技能';
+        document.getElementById('edit-skill-id').value = '';
+        document.getElementById('skill-name').value = '';
+        document.getElementById('levels-container').innerHTML = '';
+        addLevelInput(); // 默认给一个等级输入框
+        document.getElementById('skill-modal').dataset.tempIcon = '🔥'; // 默认图标
+        renderIconSelector('skill', '🔥');
+        openModal('skill-modal');
+    }
+
+    function editSkill(id) {
+        const skill = appData.skills.find(s => s.id === id);
+        if (!skill) return;
+
+        document.getElementById('skill-modal-title').innerText = '编辑技能';
+        document.getElementById('edit-skill-id').value = skill.id;
+        document.getElementById('skill-name').value = skill.name;
+
+        const container = document.getElementById('levels-container');
+        container.innerHTML = '';
+        skill.levels.forEach((exp, index) => {
+            addLevelInput(exp);
+        });
+
+        document.getElementById('skill-modal').dataset.tempIcon = skill.icon;
+        renderIconSelector('skill', skill.icon);
+
+        openModal('skill-modal');
+    }
+
+    function addLevelInput(defaultValue = '') {
+        const container = document.getElementById('levels-container');
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.gap = '10px';
+        div.style.marginBottom = '10px';
+        div.innerHTML = `
+            <input type="number" placeholder="升级所需经验" value="${defaultValue}" style="flex:1; margin-bottom:0;">
+            <button class="btn" style="background:#FF3B30; color:white; padding: 0 10px;" onclick="this.parentElement.remove()">×</button>
+        `;
+        container.appendChild(div);
+    }
+
+    function saveSkill() {
+        const id = document.getElementById('edit-skill-id').value;
+        const name = document.getElementById('skill-name').value;
+        const icon = document.getElementById('skill-modal').dataset.tempIcon || '🔥';
+
+        // 获取等级数据
+        const levelInputs = document.querySelectorAll('#levels-container input');
+        const levels = [];
+        levelInputs.forEach(input => {
+            if (input.value) levels.push(parseInt(input.value));
+        });
+
+        if (!name || levels.length === 0) {
+            alert('请填写名称和至少一个等级');
+            return;
+        }
+
+        if (id) {
+            // 更新
+            const skill = appData.skills.find(s => s.id === id);
+            skill.name = name;
+            skill.icon = icon;
+            skill.levels = levels;
+            // 注意：这里不重置经验值
+        } else {
+            // 新增
+            const newSkill = {
+                id: Date.now().toString(),
+                name: name,
+                icon: icon,
+                currentExp: 0,
+                levels: levels,
+                logs: {} // 初始化日志
+            };
+            appData.skills.push(newSkill);
+        }
+
+        saveData();
+        closeModal('skill-modal');
+    }
+
+    function deleteCurrentSkill() {
+        const id = document.getElementById('edit-skill-id').value;
+        if (id) {
+            if(confirm('确定删除这个技能吗？')) {
+                appData.skills = appData.skills.filter(s => s.id !== id);
+                saveData();
+                closeModal('skill-modal');
+            }
+        }
+    }
+
+    // --- 经验值逻辑 (关键修复) ---
+    function addExp(id) {
+        const skill = appData.skills.find(s => s.id === id);
+        if (!skill) return;
+
+        const { level, currentLevelExp, nextLevelExp } = getSkillStats(skill);
+
+        const inputExp = prompt(`当前 Lv.${level} (${currentLevelExp}/${nextLevelExp})\n输入增加的经验值:`, "10");
+        if (inputExp === null) return;
+
+        const expToAdd = parseInt(inputExp);
+        if (isNaN(expToAdd) || expToAdd <= 0) return;
+
+        // 核心逻辑：直接累加总经验，getSkillStats 会自动处理溢出
+        skill.currentExp += expToAdd;
+
+        // 记录日志
+        const today = new Date().toISOString().split('T')[0];
+        if (!skill.logs[today]) skill.logs[today] = 0;
+        skill.logs[today] += expToAdd;
+
+        saveData();
+
+        // 检查是否升级 (简单提示)
+        const newStats = getSkillStats(skill);
+        if (newStats.level > level) {
+            alert(`恭喜！升级到了 Lv.${newStats.level}`);
+        }
+    }
+
+    // --- 日历逻辑 ---
+    let currentMonthOffset = 0;
+
+    function switchTab(tab) {
+        document.getElementById('skill-list-view').style.display = tab === 'skills' ? 'block' : 'none';
+        document.getElementById('calendar-view').style.display = tab === 'calendar' ? 'block' : 'none';
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        // 简单的高亮逻辑，实际应根据索引
+        if(tab === 'skills') document.querySelectorAll('.nav-item')[0].classList.add('active');
+        else document.querySelectorAll('.nav-item')[1].classList.add('active');
+
+        if (tab === 'calendar') renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const monthLabel = document.getElementById('calendar-month-year');
+        const logList = document.getElementById('daily-logs');
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + currentMonthOffset;
+
+        const date = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayIndex = date.getDay(); // 0-6
+
+        monthLabel.innerText = `${year}年 ${month + 1}月`;
+
+        grid.innerHTML = '';
+        // 星期头
+        ['日','一','二','三','四','五','六'].forEach(d => {
+            grid.innerHTML += `<div class="cal-day-name">${d}</div>`;
+        });
+
+        // 空白占位
+        for (let i = 0; i < firstDayIndex; i++) {
+            grid.innerHTML += `<div></div>`;
+        }
+
+        // 天数
+        const todayStr = new Date().toISOString().split('T')[0];
+        const selectedDateStr = new Date(year, month, 1).toISOString().split('T')[0].slice(0, 8); // 简化比较
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const d = new Date(year, month, i);
+            const dStr = d.toISOString().split('T')[0];
+            const isToday = dStr === todayStr;
+
+            // 检查当天是否有日志
+            let hasLog = false;
+            appData.skills.forEach(s => {
+                if (s.logs[dStr]) hasLog = true;
+            });
+
+            const dayEl = document.createElement('div');
+            dayEl.className = `cal-day ${isToday ? 'today' : ''} ${hasLog ? 'has-log' : ''}`;
+            dayEl.innerText = i;
+            dayEl.onclick = () => showDayLogs(dStr);
+            grid.appendChild(dayEl);
+        }
+
+        // 默认显示今天的日志
+        if (currentMonthOffset === 0) showDayLogs(todayStr);
+    }
+
+    function changeMonth(offset) {
+        currentMonthOffset += offset;
+        renderCalendar();
+    }
+
+    function showDayLogs(dateStr) {
+        const logList = document.getElementById('daily-logs');
+        logList.innerHTML = `<h3>${dateStr} 的记录</h3>`;
+
+        let hasAny = false;
+        appData.skills.forEach(skill => {
+            const val = skill.logs[dateStr];
+            if (val) {
+                hasAny = true;
+                logList.innerHTML += `
+                    <div class="log-item">
+                        <span>${skill.name}</span>
+                        <span style="color:var(--primary)">+${val} 经验</span>
+                    </div>
+                `;
+            }
+        });
+
+        if (!hasAny) {
+            logList.innerHTML += `<div style="color:var(--gray); font-size:14px; padding:10px;">暂无记录</div>`;
+        }
+    }
+
+    // --- 工具函数 ---
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+</script>
+</body>
+</html>
+
